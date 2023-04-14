@@ -2,6 +2,7 @@ import os
 import openai
 import numpy as np
 import json
+import random
 
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
@@ -49,11 +50,10 @@ def obtain_command_from_freetext( freeText ):
             else:
                 if cosineSimilarity( npInputEmbeddingVector, npPrecomputedEmbeddingVector ) > cosineSimilarity( npInputEmbeddingVector, best[ 2 ] ):
                     best = ( command, precomputedEmbedding[ "phrase" ], npPrecomputedEmbeddingVector )
-                    # print( "Newest best: " + best + ": " + str( cosineSimilarity( testVector, tokenToVector[ bestToken ] ) ) )
 
     print( "Best matching command = " + best[ 0 ] + ", matching phrase = '" + best[ 1 ] + "'")
 
-    return( best[ 0 ] )
+    return( json.loads( best[ 0 ] ) )
 
 def tic_tac_toe():
     board = [[" ", " ", " "] for i in range(3)]
@@ -66,19 +66,21 @@ def tic_tac_toe():
         freetext = input( "Player {}, please describe your move: ".format(current_player) )
         command = obtain_command_from_freetext( freetext )
 
-        row = None
-        col = None
-        unrolledCommand = json.loads( command )
+        if command[ "type" ] == "placement":
+            positions = command[ "positions" ]
+            openPositions = list( filter(lambda p: board[ p[ 0 ] ][ p[ 1 ] ] == " ", positions ) )
 
-        if unrolledCommand[ "type" ] == "placement":
-            row = unrolledCommand[ "position" ][ 0 ]
-            col = unrolledCommand[ "position" ][ 1 ]
-
-            if board[row][col] != " ":
-                print("This position is already occupied. Please try again!")
+            if len( openPositions ) == 0:
+                print("All possible matching positions are already occupied. Please try again!")
                 continue
 
-            board[row][col] = current_player
+            chosenPosition = random.choice( openPositions )
+
+            if board[ chosenPosition[ 0 ] ][ chosenPosition[ 1 ] ] != " ":
+                print("That position is already occupied. Please try again!")
+                continue
+
+            board[ chosenPosition[ 0 ] ][ chosenPosition[ 1 ] ] = current_player
 
             if check_win(board, current_player):
                 print_board(board)
@@ -91,7 +93,7 @@ def tic_tac_toe():
                 break
 
             current_player = players[(players.index(current_player) + 1) % 2]
-        elif unrolledCommand[ "type" ] == "resignation":
+        elif command[ "type" ] == "resignation":
             print("Player {} loses by resigning -- but at least you maintain your dignity!".format(current_player))
             break
 
